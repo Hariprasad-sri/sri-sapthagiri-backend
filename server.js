@@ -707,6 +707,11 @@ app.get('/api/pipe-categories', async (req, res) => {
 
 app.post('/api/pipe-categories', async (req, res) => {
     try {
+        const existing = await PipeCategory.findOne({ name: req.body.name, type: req.body.type || 'supreme' });
+        if (existing) {
+            return res.status(400).json({ error: 'Category already exists' });
+        }
+
         const category = new PipeCategory({
             name: req.body.name,
             type: req.body.type || 'supreme',
