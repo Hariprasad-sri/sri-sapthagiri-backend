@@ -14,8 +14,25 @@ const PORT = process.env.PORT || 5001;
 const RETENTION_SECONDS = 18 * 30 * 24 * 60 * 60; // 18 months ≈ 547 days
 const RETENTION_MS      = RETENTION_SECONDS * 1000;
 
-app.use(cors());
+// CORS — allow production domain and local dev
+const allowedOrigins = [
+  'https://srisapthagirisystems.in',
+  'https://www.srisapthagirisystems.in',
+  'http://localhost:5001',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('CORS not allowed from: ' + origin));
+  },
+  credentials: true,
+}));
 app.use(express.json());
+
 // MongoDB Connection — Optimized for Serverless
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/sri_sapthagiri';
 
