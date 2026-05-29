@@ -422,12 +422,13 @@ app.patch('/api/products/:id/add-stock', async (req, res) => {
         } else if (qty < 0) {
             // Reduce stock — remove available units
             const toRemove = Math.abs(qty);
-            if (product.stock + qty < 0) {
-                return res.status(400).json({ error: `Cannot reduce stock below 0. Current stock: ${product.stock}` });
+            const availableAtLocation = product.units.filter(u => u.status === 'available' && (!location || u.location === location)).length;
+            if (availableAtLocation < toRemove) {
+                return res.status(400).json({ error: `Cannot reduce stock by ${toRemove} at ${location || 'Global'}. Available: ${availableAtLocation}` });
             }
             let removed = 0;
             for (let i = product.units.length - 1; i >= 0 && removed < toRemove; i--) {
-                if (product.units[i].status === 'available') {
+                if (product.units[i].status === 'available' && (!location || product.units[i].location === location)) {
                     product.units.splice(i, 1);
                     removed++;
                 }
