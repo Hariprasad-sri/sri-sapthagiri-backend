@@ -250,11 +250,21 @@ app.post('/api/products', async (req, res) => {
         }
 
         // Normalize specs from top-level model/size/material fields
+        const sizeVal = productData.size || productData.specs?.size || '';
+        const materialVal = productData.material || productData.specs?.material || '';
+        const modelVal = productData.model || productData.specs?.model || '';
+        const unitVal = productData.unit || productData.specs?.unit || '';
+
+        productData.size = sizeVal;
+        productData.material = materialVal;
+        productData.model = modelVal;
+        productData.unit = unitVal;
+
         productData.specs = {
-            model: productData.model || '',
-            size: productData.size || '',
-            material: productData.material || '',
-            unit: productData.unit || '',
+            model: modelVal,
+            size: sizeVal,
+            material: materialVal,
+            unit: unitVal,
         };
         productData.subCategory = productData.subCategory || '';
 
@@ -299,10 +309,17 @@ app.put('/api/products/:id', async (req, res) => {
         
         // Update basic fields
         if (req.body.name) product.name = req.body.name;
-        if (req.body.model) product.model = req.body.model;
-        if (req.body.size) product.size = req.body.size;
-        if (req.body.material) product.material = req.body.material;
-        if (req.body.unit !== undefined) product.unit = req.body.unit;
+        
+        const sizeVal = req.body.size !== undefined ? req.body.size : (req.body.specs?.size !== undefined ? req.body.specs.size : product.size);
+        const materialVal = req.body.material !== undefined ? req.body.material : (req.body.specs?.material !== undefined ? req.body.specs.material : product.material);
+        const modelVal = req.body.model !== undefined ? req.body.model : (req.body.specs?.model !== undefined ? req.body.specs.model : product.model);
+        const unitVal = req.body.unit !== undefined ? req.body.unit : (req.body.specs?.unit !== undefined ? req.body.specs.unit : product.unit);
+
+        product.size = sizeVal || '';
+        product.material = materialVal || '';
+        product.model = modelVal || '';
+        product.unit = unitVal || '';
+
         if (req.body.lowStockLimit !== undefined) product.lowStockLimit = parseInt(req.body.lowStockLimit);
         if (req.body.subCategory !== undefined) product.subCategory = req.body.subCategory;
         
