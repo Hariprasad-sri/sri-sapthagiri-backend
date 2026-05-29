@@ -771,7 +771,18 @@ app.get('/api/pipe-columns/:category', async (req, res) => {
     try {
         const category = req.params.category;
         const config = await PipeConfig.findOne({ category });
-        res.json(config?.columns || ['4KG', '6KG', '10KG', '15KG', 'SLOTTED']);
+        if (config) {
+            return res.json(config.columns);
+        }
+
+        const cat = await PipeCategory.findOne({ name: category });
+        const isFitting = cat ? cat.type === 'fitting' : (category.toUpperCase().includes('FITTING') || category.toUpperCase().includes('SIZE'));
+
+        if (isFitting) {
+            res.json(['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"']);
+        } else {
+            res.json(['4KG', '6KG', '10KG', '15KG', 'SLOTTED']);
+        }
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
