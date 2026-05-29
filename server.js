@@ -261,6 +261,7 @@ app.post('/api/products', async (req, res) => {
         productData.unit = unitVal;
 
         productData.specs = {
+            ...(productData.specs || {}),
             model: modelVal,
             size: sizeVal,
             material: materialVal,
@@ -323,8 +324,9 @@ app.put('/api/products/:id', async (req, res) => {
         if (req.body.lowStockLimit !== undefined) product.lowStockLimit = parseInt(req.body.lowStockLimit);
         if (req.body.subCategory !== undefined) product.subCategory = req.body.subCategory;
         
-        // Build specs for compatibility
         product.specs = {
+            ...(product.specs || {}),
+            ...(req.body.specs || {}),
             model: product.model || '',
             size: product.size || '',
             material: product.material || '',
