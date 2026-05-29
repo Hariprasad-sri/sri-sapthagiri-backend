@@ -162,7 +162,8 @@ const pipeCategorySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const pipeConfigSchema = new mongoose.Schema({
-    columns: { type: [String], default: ['4KG', '6KG', '10KG', '15KG', 'SLOTTED'] },
+    category: { type: String, required: true, unique: true },
+    columns:  { type: [String], default: ['4KG', '6KG', '10KG', '15KG', 'SLOTTED'] },
 }, { timestamps: true });
 
 const Product = mongoose.model('Product', productSchema);
@@ -766,17 +767,23 @@ app.delete('/api/pipe-categories/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/pipe-columns', async (req, res) => {
+app.get('/api/pipe-columns/:category', async (req, res) => {
     try {
-        const config = await PipeConfig.findOne();
+        const category = req.params.category;
+        const config = await PipeConfig.findOne({ category });
         res.json(config?.columns || ['4KG', '6KG', '10KG', '15KG', 'SLOTTED']);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/pipe-columns', async (req, res) => {
+app.put('/api/pipe-columns/:category', async (req, res) => {
     try {
+        const category = req.params.category;
         const columns = Array.isArray(req.body.columns) ? req.body.columns : [];
-        const config = await PipeConfig.findOneAndUpdate({}, { columns }, { new: true, upsert: true, setDefaultsOnInsert: true });
+        const config = await PipeConfig.findOneAndUpdate(
+            { category },
+            { columns },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
         res.json(config.columns);
     } catch (err) { res.status(400).json({ error: err.message }); }
 });
