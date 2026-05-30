@@ -1,6 +1,5 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
@@ -28,7 +27,18 @@ app.use(cors({
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     if (origin.endsWith('.vercel.app')) return callback(null, true);
-    callback(new Error('CORS not allowed from: ' + origin));
+    
+    // Allow any domain/subdomain of srisapthagirisystems.in
+    try {
+      const url = new URL(origin);
+      if (url.hostname === 'srisapthagirisystems.in' || url.hostname.endsWith('.srisapthagirisystems.in')) {
+        return callback(null, true);
+      }
+    } catch (e) {
+      // Ignore URL parsing errors
+    }
+
+    callback(null, false);
   },
   credentials: true,
 }));
@@ -37,22 +47,23 @@ app.use(express.json());
 // MongoDB Connection — Optimized for Serverless
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/sri_sapthagiri';
 
-let isConnected = false;
+let isConnecting = false;
 let mongoMemoryServer = null;
 
 async function connectToDatabase() {
-    if (isConnected) return;
+    if (mongoose.connection.readyState === 1) return;
+    if (isConnecting) return;
     
+    isConnecting = true;
     console.log('📡 Connecting to MongoDB...');
     try {
         await mongoose.connect(MONGO_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
             dbName: 'sri_sapthagiri',
-            serverSelectionTimeoutMS: 10000,
+            serverSelectionTimeoutMS: 5000, // Fail faster to trigger background connect
             socketTimeoutMS: 45000,
         });
-        isConnected = true;
         console.log('✅ MongoDB Connected Successfully');
         seedDatabase();
     } catch (err) {
@@ -60,29 +71,46 @@ async function connectToDatabase() {
         if (process.env.NODE_ENV !== 'production') {
             console.log('⚠️ Falling back to an in-memory MongoDB instance for local development...');
             try {
+                const { MongoMemoryServer } = require('mongodb-memory-server');
                 mongoMemoryServer = await MongoMemoryServer.create();
                 const memoryUri = mongoMemoryServer.getUri();
                 await mongoose.connect(memoryUri, {
                     useNewUrlParser: true,
                     useUnifiedTopology: true,
                     dbName: 'sri_sapthagiri',
-                    serverSelectionTimeoutMS: 10000,
+                    serverSelectionTimeoutMS: 5000,
                     socketTimeoutMS: 45000,
                 });
-                isConnected = true;
                 console.log('✅ In-memory MongoDB instance started successfully');
                 seedDatabase();
             } catch (memErr) {
                 console.error(`❌ In-memory MongoDB startup failed: ${memErr.message}`);
             }
         }
+    } finally {
+        isConnecting = false;
     }
 }
 
+// Ping endpoint for health check - defined BEFORE DB check middleware so it never blocks
+app.get('/api/ping', (req, res) => {
+    res.json({ status: 'ok' });
+});
+
 // Middleware to ensure DB is connected before handling requests
-app.use(async (req, res, next) => {
-    await connectToDatabase();
-    next();
+app.use((req, res, next) => {
+    if (mongoose.connection.readyState === 1) {
+        return next();
+    }
+    
+    // Trigger background connection attempt without blocking the request
+    connectToDatabase().catch(err => console.error('Background DB connection error:', err));
+    
+    // Return 503 Service Unavailable immediately instead of blocking the gateway
+    res.status(503).json({ 
+        error: 'Database connection is temporarily unavailable. Please retry shortly.',
+        status: 'disconnected'
+    });
 });
 
 
@@ -904,10 +932,7 @@ app.delete('/api/retention/purge', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Ping endpoint for health check
-app.get('/api/ping', (req, res) => {
-    res.json({ status: 'ok' });
-});
+// Ping endpoint moved above DB middleware
 
 // 404 Handler for API
 app.use('/api', (req, res) => {
