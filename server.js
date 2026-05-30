@@ -111,7 +111,7 @@ const productSchema = new mongoose.Schema({
     units: [{
         serialNumber: { type: String },
         status: { type: String, enum: ['available', 'sold', 'in-transit', 'dispatched'], default: 'available' },
-        location: { type: String, default: 'Main Godown' },
+        location: { type: String, default: 'SHOP' },
         timestamp: { type: Date, default: Date.now }
     }]
 }, { timestamps: true });
@@ -191,9 +191,9 @@ async function seedDatabase() {
     const lCount = await Location.countDocuments();
     if (lCount === 0) {
         await Location.insertMany([
-            { name: 'Main Godown' },
-            { name: 'North Godown' },
-            { name: 'South Godown' }
+            { name: 'ROYAL NAGAR' },
+            { name: 'AVILALA' },
+            { name: 'SHOP' }
         ]);
         console.log('🌱 Database seeded with default locations');
     }
@@ -218,8 +218,14 @@ app.post('/api/auth/login', (req, res) => {
 // ROUTES: PRODUCTS
 // ──────────────────────────────────────────
 app.get('/api/products', async (req, res) => {
-    try { res.json(await Product.find().sort({ createdAt: -1 })); }
-    catch (err) { res.status(500).json({ error: err.message }); }
+    try {
+        const products = await Product.find().sort({ createdAt: -1 });
+        res.json(products);
+    }
+    catch (err) {
+        console.error('❌ Error fetching products:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/products', async (req, res) => {
@@ -274,7 +280,7 @@ app.post('/api/products', async (req, res) => {
                 before: 0,
                 added: productData.stock,
                 after: productData.stock,
-                location: location || 'Main Godown',
+                location: location || 'SHOP',
                 type: 'initial',
                 timestamp: new Date()
             }];
@@ -282,13 +288,13 @@ app.post('/api/products', async (req, res) => {
             if (snList.length === 0) {
                 productData.units = Array(productData.stock).fill(0).map(() => ({
                     status: 'available',
-                    location: location || 'Main Godown'
+                    location: location || 'SHOP'
                 }));
             } else {
                 productData.units = snList.map(sn => ({
                     serialNumber: sn.trim(),
                     status: 'available',
-                    location: location || 'Main Godown'
+                    location: location || 'SHOP'
                 }));
             }
         }
@@ -341,7 +347,7 @@ app.put('/api/products/:id', async (req, res) => {
                 for (let i = 0; i < diff; i++) {
                     product.units.push({
                         status: 'available',
-                        location: 'Main Godown'
+                        location: 'SHOP'
                     });
                 }
                 product.stockHistory.push({
@@ -396,7 +402,7 @@ app.patch('/api/products/:id/add-stock', async (req, res) => {
                 before,
                 added: qty,
                 after: product.stock,
-                location: location || 'Main Godown',
+                location: location || 'SHOP',
                 type: 'inflow',
                 timestamp: new Date()
             });
@@ -407,7 +413,7 @@ app.patch('/api/products/:id/add-stock', async (req, res) => {
                 for (let i = 0; i < qty; i++) {
                     product.units.push({
                         status: 'available',
-                        location: location || 'Main Godown'
+                        location: location || 'SHOP'
                     });
                 }
             } else {
@@ -415,7 +421,7 @@ app.patch('/api/products/:id/add-stock', async (req, res) => {
                     product.units.push({ 
                         serialNumber: sn.trim(), 
                         status: 'available', 
-                        location: location || 'Main Godown' 
+                        location: location || 'SHOP' 
                     });
                 });
             }
@@ -438,7 +444,7 @@ app.patch('/api/products/:id/add-stock', async (req, res) => {
                 before,
                 added: qty,
                 after: product.stock,
-                location: location || 'Main Godown',
+                location: location || 'SHOP',
                 type: 'adjustment',
                 timestamp: new Date()
             });
