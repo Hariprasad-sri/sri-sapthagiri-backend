@@ -944,6 +944,9 @@ app.get('*', (req, res) => {
     res.json({ message: "Sri Sapthagiri Inventory System API is running." });
 });
 
+// Warm up database connection on startup so it is immediately ready
+connectToDatabase().catch(err => console.error('Initial DB connection error on startup:', err));
+
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`🚀 Sri Sapthagiri Server running on http://localhost:${PORT}`);
